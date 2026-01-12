@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Gymnastique EPS</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e74c3c;
+            --bg: #ecf0f1;
+            --white: #ffffff;
+            --text: #333;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .back-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-right: 15px;
+        }
+        
+        .title-bar { flex-grow: 1; text-align: center; font-weight: bold; font-size: 1.2rem; }
+
+        /* Content Area */
+        #app {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 1024px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Grids */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* Cards (Agres, Actions, Elements) */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 150px;
+        }
+
+        .card:active { transform: scale(0.98); }
+        .card img { max-width: 100%; height: auto; max-height: 120px; margin-bottom: 10px; }
+        .card h3 { margin: 0; font-size: 1.1rem; color: var(--primary); }
+
+        /* Detail View Layout */
+        .detail-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .detail-container { grid-template-columns: 1fr; } }
+
+        .video-box {
+            background: black;
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+        }
+        .video-box img { max-width: 100%; max-height: 400px; }
+        
+        .info-box {
+            background: var(--white);
+            padding: 20px;
+            border-radius: var(--radius);
+        }
+
+        .toggle-view {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .toggle-btn {
+            background: #ddd;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .toggle-btn.active { background: var(--accent); color: white; }
+        .toggle-btn:first-child { border-radius: 8px 0 0 8px; }
+        .toggle-btn:last-child { border-radius: 0 8px 8px 0; }
+
+        h2 { border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-top: 0; }
+        
+        .criteria-list li { margin-bottom: 8px; }
+        .criteria-list { padding-left: 20px; }
+        
+        .section-title { font-weight: bold; margin-top: 15px; color: var(--accent); }
+
+        /* Steps & Errors */
+        .sub-gallery {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+        .sub-card {
+            min-width: 120px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .sub-card img { width: 100px; height: 100px; object-fit: cover; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <button id="backBtn" class="back-btn" style="display:none;">&lt; Retour</button>
+    <div id="headerTitle" class="title-bar">GYMNASTIQUE EPS</div>
+</header>
+
+<div id="app">
+    </div>
+
+<script>
+    // --- 1. CONFIGURATION ET DONNÉES ---
+    
+    // Liste complète des fichiers (copiée de votre IMAGES.txt)
+    const rawFiles = [
+        "BARRES - SE MAINTENIR - APPUI SIMPLE - FACE.webp",
+        "BARRES - SE MAINTENIR - SUSPENSION SIMPLE - FACE.webp",
+        "BARRES - SE MAINTENIR.webp",
+        "POUTRE - SAUTER - SAUT AU DESSUS DE LA POUTRE - PROFIL.webp",
+        "POUTRE - SAUTER.webp",
+        "POUTRE - SE DEPLACER - A 4 PATTES - FACE.webp",
+        "POUTRE - SE DEPLACER - A 4 PATTES - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN ARRAIGNEE - FACE.webp",
+        "POUTRE - SE DEPLACER - EN ARRAIGNEE - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN CHENILLE - FACE.webp",
+        "POUTRE - SE DEPLACER - EN CHENILLE - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN GIRAFE - FACE.webp",
+        "POUTRE - SE DEPLACER - EN GIRAFE - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN KANGOUROU - FACE.webp",
+        "POUTRE - SE DEPLACER - EN KANGOUROU - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN LAPIN - FACE.webp",
+        "POUTRE - SE DEPLACER - EN LAPIN - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN MARCHANT - FACE.webp",
+        "POUTRE - SE DEPLACER - EN MARCHANT - PROFIL.webp",
+        "POUTRE - SE DEPLACER - EN RECULANT - FACE.webp",
+        "POUTRE - SE DEPLACER - EN RECULANT - PROFIL.webp",
+        "POUTRE - SE DEPLACER.webp",
+        "POUTRE - SE MAINTENIR.webp",
+        "SOL - ROULER - CULBUTO - FACE - ERREUR - CULBUTO INCOMPLET (PAS DE RETOUR).webp",
+        "SOL - ROULER - CULBUTO - FACE.webp",
+        "SOL - ROULER - CULBUTO - PROFIL.webp",
+        "SOL - ROULER - ROULADE ARRIERE - FACE - ETAPE - 3.webp",
+        "SOL - ROULER - ROULADE ARRIERE - FACE - ETAPE - 4.webp",
+        "SOL - ROULER - ROULADE ARRIERE - PROFIL - ERREUR - TETE RELEVEE MANQUE D ENROULEMENT.webp",
+        "SOL - ROULER - ROULADE ARRIERE - PROFIL - ETAPE - 3.webp",
+        "SOL - ROULER - ROULADE ARRIERE - PROFIL - ETAPE - 4.webp",
+        "SOL - ROULER - ROULADE AVANT - FACE - ETAPE - 1.webp",
+        "SOL - ROULER - ROULADE AVANT - FACE - ETAPE - 2.webp",
+        "SOL - ROULER - ROULADE AVANT - FACE - ETAPE - 3.webp",
+        "SOL - ROULER - ROULADE AVANT - FACE.webp",
+        "SOL - ROULER - ROULADE AVANT - PROFIL - ETAPE - 1.webp",
+        "SOL - ROULER - ROULADE AVANT - PROFIL - ETAPE - 2_1.webp",
+        "SOL - ROULER - ROULADE AVANT - PROFIL - ETAPE - 2.webp",
+        "SOL - ROULER - ROULADE AVANT - PROFIL - ETAPE - 3.webp",
+        "SOL - ROULER - ROULADE AVANT - PROFIL.webp",
+        "SOL - ROULER - ROULEAUX - FACE.webp",
+        "SOL - ROULER - ROULEAUX - PROFIL.webp",
+        "SOL - ROULER.webp",
+        "SOL - SAUTER - SAUT DE CHAT - FACE.webp",
+        "SOL - SAUTER - SAUT DE CHAT - PROFIL.webp",
+        "SOL - SAUTER - SAUT DE LAPIN EN CONTRE HAUT - FACE.webp",
+        "SOL - SAUTER - SAUT DE LAPIN EN CONTRE HAUT - PROFIL.webp",
+        "SOL - SAUTER - SAUT DEMI TOUR - FACE - ETAPE - 2.webp",
+        "SOL - SAUTER - SAUT DEMI TOUR - FACE.webp",
+        "SOL - SAUTER - SAUT DEMI TOUR - PROFIL - ETAPE - 2.webp",
+        "SOL - SAUTER - SAUT DEMI TOUR - PROFIL.webp",
+        "SOL - SAUTER - SAUT EXTENSION - FACE.webp",
+        "SOL - SAUTER - SAUT EXTENSION - PROFIL.webp",
+        "SOL - SAUTER - SAUT EXTENSION EN CONTRE BAS - FACE.webp",
+        "SOL - SAUTER - SAUT EXTENSION EN CONTRE BAS - PROFIL.webp",
+        "SOL - SAUTER - SAUT GROUPE - FACE.webp",
+        "SOL - SAUTER - SAUT GROUPE - PROFIL.webp",
+        "SOL - SAUTER - SAUTS PIEDS JOINTS DANS CERCEAUX - FACE.webp",
+        "SOL - SAUTER - SAUTS PIEDS JOINTS DANS CERCEAUX - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN ARAIGNEE - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN ARAIGNEE - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN CHAT - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN CHAT - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN CHENILLE - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN CHENILLE - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN ELEPHANT - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN ELEPHANT - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN GIRAFE - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN GIRAFE - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN KANGOUROU - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN KANGOUROU - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN LAPIN - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN LAPIN - PROFIL.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN PHOQUE - FACE.webp",
+        "SOL - SE DEPLACER - SE DEPLACER EN PHOQUE - PROFIL.webp",
+        "SOL - SE DEPLACER.webp",
+        "SOL - SE MAINTENIR - ATTITUDE EQUILIBRE 1 PIED - FACE.webp",
+        "SOL - SE MAINTENIR - ATTITUDE EQUILIBRE 1 PIED - PROFIL.webp",
+        "SOL - SE MAINTENIR - CUILLIERE - FACE.webp",
+        "SOL - SE MAINTENIR - CUILLIERE - PROFIL.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - FACE - ETAPE - 1.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - FACE - ETAPE - 2.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - FACE - ETAPE - 3.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - FACE.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - PROFIL - ETAPE - 1.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - PROFIL - ETAPE - 2.webp",
+        "SOL - SE MAINTENIR - EQUILIBRE FESSIER - PROFIL - ETAPE - 3.webp",
+        "SOL - SE MAINTENIR - PLANCHE - PROFIL - ETAPE - 1.webp",
+        "SOL - SE MAINTENIR - PONT - FACE.webp",
+        "SOL - SE MAINTENIR - PONT - PROFIL.webp",
+        "SOL - SE MAINTENIR.webp",
+        "SOL - SE RENVERSER - ATR - FACE - ERREUR - LE CORPS EST EN ”BANANE”.webp",
+        "SOL - SE RENVERSER - ATR - PROFIL - ERREUR - LE CORPS EST EN ”BANANE”.webp",
+        "SOL - SE RENVERSER - ATR 1 JAMBE - FACE.webp",
+        "SOL - SE RENVERSER - ROUE - FACE - ETAPE - 2.webp",
+        "SOL - SE RENVERSER - ROUE - FACE - ETAPE - 3.webp",
+        "SOL - SE RENVERSER - ROUE - FACE.webp",
+        "SOL - SE RENVERSER - ROUE - PROFIL - ETAPE - 2.webp",
+        "SOL - SE RENVERSER - ROUE - PROFIL - ETAPE - 3.webp",
+        "SOL - SE RENVERSER - ROUE - PROFIL.webp",
+        "SOL - SE RENVERSER.webp",
+        "SOL - SE SAUTER.webp"
+    ];
+
+    // Simulation des données "Numbers" (A remplir plus tard avec vos vrais critères)
+    // Format: "NOM_ELEMENT": { niveau: 1, materiel: "...", rea: ["..."], reussite: ["..."] }
+    const elementData = {
+        "ROULADE AVANT": {
+            niveau: 1,
+            materiel: "Tapis de sol",
+            realisation: ["Partir sur les pieds", "Rentrer la tête (menton poitrine)", "Rester groupé"],
+            reussite: ["Se relever sans les mains", "Rouler dans l'axe"]
+        },
+        "ROULADE ARRIERE": {
+            niveau: 1,
+            materiel: "Plan incliné ou Tapis",
+            realisation: ["Mains aux oreilles (plateau)", "Pousser fort sur les bras"],
+            reussite: ["Arriver sur les pieds"]
+        },
+        "ATR": {
+            niveau: 2,
+            materiel: "Mur ou Parade",
+            realisation: ["Bras tendus", "Regard entre les mains", "Corps gainé"],
+            reussite: ["Tenir 3 secondes"]
+        }
+        // Ajoutez vos autres éléments ici...
+    };
+
+    const defaultData = {
+        niveau: "Non défini",
+        materiel: "Standard",
+        realisation: ["Critère 1", "Critère 2"],
+        reussite: ["Critère de réussite"]
+    };
+
+    // --- 2. PARSEUR DE FICHIERS ---
+
+    const library = {}; // Structure: { [AGRES]: { [ACTION]: { image: "...", elements: { [NOM]: { face: "...", profil: "...", etapes: [], erreurs: [] } } } } }
+
+    function parseFiles() {
+        rawFiles.forEach(filename => {
+            // Nettoyage nom de fichier
+            const cleanName = filename.replace('.webp', '');
+            const parts = cleanName.split(' - ');
+            
+            const agres = parts[0];
+            const action = parts[1];
+
+            // Initialisation de la structure
+            if (!library[agres]) library[agres] = {};
+            if (!library[agres][action]) library[agres][action] = { image: null, elements: {} };
+
+            // Cas 1: Image de l'Action (ex: SOL - ROULER.webp)
+            if (parts.length === 2) {
+                library[agres][action].image = filename;
+                return;
+            }
+
+            // Cas 2: Élément ou étape/erreur
+            const element = parts[2];
+            const view = parts[3]; // FACE ou PROFIL
+
+            // Init de l'élément
+            if (!library[agres][action].elements[element]) {
+                library[agres][action].elements[element] = { 
+                    face: null, 
+                    profil: null, 
+                    etapes: [], 
+                    erreurs: [] 
+                };
+            }
+            
+            const targetEl = library[agres][action].elements[element];
+
+            // Cas 3: Vidéo principale (Face/Profil)
+            if (parts.length === 4) {
+                if (view === 'FACE') targetEl.face = filename;
+                if (view === 'PROFIL') targetEl.profil = filename;
+            }
+            // Cas 4: Étape ou Erreur
+            else if (parts.length >= 6) {
+                const type = parts[4]; // ETAPE ou ERREUR
+                const detail = parts.slice(5).join(' - '); // Reste du nom (numéro ou description)
+                
+                const obj = { file: filename, view: view, detail: detail };
+                
+                if (type === 'ETAPE') targetEl.etapes.push(obj);
+                if (type === 'ERREUR') targetEl.erreurs.push(obj);
+            }
+        });
+
+        // Tri des étapes
+        for (let a in library) {
+            for (let ac in library[a]) {
+                for (let el in library[a][ac].elements) {
+                    library[a][ac].elements[el].etapes.sort((x, y) => x.detail.localeCompare(y.detail));
+                }
+            }
+        }
+    }
+
+    // --- 3. GESTION DE LA NAVIGATION ---
+
+    const app = document.getElementById('app');
+    const backBtn = document.getElementById('backBtn');
+    const titleBar = document.getElementById('headerTitle');
+    let historyStack = [];
+
+    function navigateTo(viewName, data) {
+        historyStack.push({ view: viewName, data: data });
+        render();
+    }
+
+    backBtn.addEventListener('click', () => {
+        if (historyStack.length > 1) {
+            historyStack.pop();
+            render();
+        }
+    });
+
+    function render() {
+        const current = historyStack[historyStack.length - 1];
+        app.innerHTML = '';
+        
+        // Gestion du bouton retour
+        backBtn.style.display = historyStack.length > 1 ? 'block' : 'none';
+
+        if (current.view === 'HOME') renderHome();
+        else if (current.view === 'ACTIONS') renderActions(current.data);
+        else if (current.view === 'ELEMENTS') renderElements(current.data);
+        else if (current.view === 'DETAIL') renderDetail(current.data);
+    }
+
+    // --- 4. VUES ---
+
+    function renderHome() {
+        titleBar.innerText = "ACCUEIL - Choisissez un agrès";
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        Object.keys(library).forEach(agres => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<h3>${agres}</h3>`;
+            card.onclick = () => navigateTo('ACTIONS', agres);
+            grid.appendChild(card);
+        });
+        app.appendChild(grid);
+    }
+
+    function renderActions(agres) {
+        titleBar.innerText = `${agres} - Choisissez une action`;
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+        
+        const actions = library[agres];
+        Object.keys(actions).forEach(action => {
+            const data = actions[action];
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            let imgHtml = '';
+            if (data.image) {
+                imgHtml = `<img src="IMAGES/${data.image}" alt="${action}">`;
+            } else {
+                imgHtml = `<div style="height:100px; display:flex; align-items:center; justify-content:center; background:#eee; width:100%; margin-bottom:10px;">Pas d'image</div>`;
+            }
+
+            card.innerHTML = `${imgHtml}<h3>${action}</h3>`;
+            card.onclick = () => navigateTo('ELEMENTS', { agres, action });
+            grid.appendChild(card);
+        });
+        app.appendChild(grid);
+    }
+
+    function renderElements(params) {
+        const { agres, action } = params;
+        titleBar.innerText = `${action} - Choisissez un élément`;
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        const elements = library[agres][action].elements;
+        Object.keys(elements).forEach(elName => {
+            const elData = elements[elName];
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // On essaie d'afficher une image (profil ou face)
+            const thumb = elData.profil || elData.face;
+            const imgHtml = thumb ? `<img src="IMAGES/${thumb}" alt="${elName}">` : '';
+
+            card.innerHTML = `${imgHtml}<h3>${elName}</h3>`;
+            card.onclick = () => navigateTo('DETAIL', { ...params, elName, elData });
+            grid.appendChild(card);
+        });
+        app.appendChild(grid);
+    }
+
+    function renderDetail(params) {
+        const { elName, elData } = params;
+        titleBar.innerText = elName;
+
+        // Récupération des données pédagogiques
+        const infos = elementData[elName] || defaultData;
+
+        // Déterminer la vue par défaut (Profil prioritaire)
+        let currentView = elData.profil ? 'PROFIL' : 'FACE';
+        let currentImg = currentView === 'PROFIL' ? elData.profil : elData.face;
+
+        const container = document.createElement('div');
+        container.className = 'detail-container';
+
+        // Colonne GAUCHE: Vidéo
+        const leftCol = document.createElement('div');
+        leftCol.innerHTML = `
+            <div class="toggle-view">
+                <button class="toggle-btn ${currentView === 'PROFIL' ? 'active' : ''}" onclick="updateVideo('PROFIL')">PROFIL</button>
+                <button class="toggle-btn ${currentView === 'FACE' ? 'active' : ''}" onclick="updateVideo('FACE')">FACE</button>
+            </div>
+            <div class="video-box">
+                <img id="mainVideo" src="IMAGES/${currentImg || ''}" alt="Vidéo">
+            </div>
+            ${!currentImg ? '<p style="text-align:center; color:red;">Vidéo non disponible pour cette vue</p>' : ''}
+        `;
+
+        // Colonne DROITE: Infos
+        const rightCol = document.createElement('div');
+        rightCol.className = 'info-box';
+        rightCol.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="background:#333; color:white; padding:5px 10px; border-radius:5px; font-size:0.8rem;">Niveau ${infos.niveau}</span>
+                <span style="font-size:0.9rem; color:#666;">Matériel: ${infos.materiel}</span>
+            </div>
+            
+            <div class="section-title">! CRITÈRES DE RÉALISATION</div>
+            <ul class="criteria-list">
+                ${infos.realisation.map(c => `<li>${c}</li>`).join('')}
+            </ul>
+
+            <div class="section-title">☑ CRITÈRES DE RÉUSSITE</div>
+            <ul class="criteria-list">
+                ${infos.reussite.map(c => `<li>${c}</li>`).join('')}
+            </ul>
+        `;
+
+        // Section Étapes et Erreurs (en bas)
+        const bottomSection = document.createElement('div');
+        bottomSection.style.marginTop = "20px";
+
+        if (elData.etapes.length > 0) {
+            bottomSection.innerHTML += `<div class="section-title">ÉTAPES DE PROGRESSION</div>`;
+            const gallery = document.createElement('div');
+            gallery.className = 'sub-gallery';
+            elData.etapes.forEach(et => {
+                const item = document.createElement('div');
+                item.className = 'sub-card';
+                item.innerHTML = `<img src="IMAGES/${et.file}"><br>Etape ${et.detail}`;
+                item.onclick = () => swapMainImage(et.file);
+                gallery.appendChild(item);
+            });
+            bottomSection.appendChild(gallery);
+        }
+
+        if (elData.erreurs.length > 0) {
+            bottomSection.innerHTML += `<div class="section-title" style="color:red;">ERREURS COURANTES</div>`;
+            const gallery = document.createElement('div');
+            gallery.className = 'sub-gallery';
+            elData.erreurs.forEach(er => {
+                const item = document.createElement('div');
+                item.className = 'sub-card';
+                item.innerHTML = `<img src="IMAGES/${er.file}"><br>${er.detail}`;
+                item.onclick = () => swapMainImage(er.file);
+                gallery.appendChild(item);
+            });
+            bottomSection.appendChild(gallery);
+        }
+
+        container.appendChild(leftCol);
+        container.appendChild(rightCol);
+        app.appendChild(container);
+        app.appendChild(bottomSection);
+
+        // Helpers internes à la vue détail
+        window.updateVideo = (view) => {
+            const filename = view === 'PROFIL' ? elData.profil : elData.face;
+            const btns = document.querySelectorAll('.toggle-btn');
+            btns.forEach(b => b.classList.remove('active'));
+            // simple toggle logic for demo
+            if(view === 'PROFIL') btns[0].classList.add('active');
+            else btns[1].classList.add('active');
+
+            const imgTag = document.getElementById('mainVideo');
+            if (filename) {
+                imgTag.src = `IMAGES/${filename}`;
+                imgTag.style.display = 'block';
+            } else {
+                imgTag.style.display = 'none';
+                alert("Pas de vidéo pour cette vue");
+            }
+        };
+
+        window.swapMainImage = (filename) => {
+            const imgTag = document.getElementById('mainVideo');
+            imgTag.src = `IMAGES/${filename}`;
+            // Désactiver les boutons Face/Profil car on regarde une étape
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        };
+    }
+
+    // --- INITIALISATION ---
+    parseFiles();
+    navigateTo('HOME');
+
+</script>
+
+</body>
+</html>
