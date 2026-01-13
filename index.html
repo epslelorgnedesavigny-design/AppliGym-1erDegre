@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Gym 1er degré">
+    <title>Éléments Gymnastique - 1er degré</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        * { box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        // Configuration
+        const IMAGES_PATH = './images';
+
+        // Composant Icône
+        const Icon = ({ type, size = 24 }) => {
+            const paths = {
+                home: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+                back: "M15 18l-6-6 6-6",
+                search: "M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35",
+                filter: "M22 3L2 3 10 12.46V19l4 2V12.46L22 3z",
+                x: "M18 6L6 18M6 6l12 12",
+                alert: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01",
+                check: "M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01 9 11.01",
+                info: "M12 22a10 10 0 110-20 10 10 0 010 20zM12 16v-4M12 8h.01",
+                play: "M5 3l14 9-14 9V3z"
+            };
+            
+            return React.createElement('svg', {
+                width: size,
+                height: size,
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 2,
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round'
+            }, React.createElement('path', { d: paths[type] }));
+        };
+
+        // Composant Image avec fallback
+        const ImageWithFallback = ({ src, alt, className }) => {
+            const [error, setError] = useState(false);
+            const [loading, setLoading] = useState(true);
+
+            if (error) {
+                return React.createElement('div', {
+                    className: 'flex flex-col items-center justify-center h-full text-gray-400 text-xs p-2'
+                }, React.createElement('span', null, 'Image non disponible'));
+            }
+
+            return React.createElement('img', {
+                src,
+                alt,
+                className,
+                style: { display: loading ? 'none' : 'block' },
+                onLoad: () => setLoading(false),
+                onError: () => {
+                    setError(true);
+                    setLoading(false);
+                }
+            });
+        };
+
+        // Application principale
+        const App = () => {
+            const [view, setView] = useState('home');
+            const [agre, setAgre] = useState(null);
+            const [action, setAction] = useState(null);
+            const [element, setElement] = useState(null);
+            const [showSteps, setShowSteps] = useState(false);
+            const [search, setSearch] = useState('');
+            const [filters, setFilters] = useState([]);
+            const [showFilters, setShowFilters] = useState(false);
+
+            const agres = [
+                { id: 'SOL', name: 'SOL', color: 'bg-blue-500' },
+                { id: 'POUTRE', name: 'POUTRE', color: 'bg-green-500' },
+                { id: 'BARRES', name: 'BARRES', color: 'bg-purple-500' }
+            ];
+
+            const actions = {
+                SOL: ['ROULER', 'SE DEPLACER', 'SAUTER', 'SE MAINTENIR', 'SE RENVERSER'],
+                POUTRE: ['SE DEPLACER', 'SAUTER', 'SE MAINTENIR'],
+                BARRES: ['SE MAINTENIR']
+            };
+
+            const data = {
+                'SOL-ROULER': [
+                    { name: 'ROULEAUX', difficulty: 1, material: 'TAPIS', criteria: ['Rester gainé', 'Contrôler le mouvement'], success: ['Mouvement fluide', 'Rouler dans l\'axe'], views: ['FACE', 'PROFIL'] },
+                    { name: 'CULBUTO', difficulty: 1, material: 'TAPIS', criteria: ['Partir groupé', 'Rentrer la tête'], success: ['Revenir en position groupée'], views: ['FACE', 'PROFIL'], errors: ['CULBUTO INCOMPLET (PAS DE RETOUR)'] },
+                    { name: 'ROULADE AVANT', difficulty: 3, material: 'TAPIS', criteria: ['Partir sur les pieds', 'Rester gainé', 'Rentrer la tête'], success: ['Jambes serrées', 'Se relever sans les mains'], views: ['FACE', 'PROFIL'], steps: 5 },
+                    { name: 'ROULADE ARRIERE', difficulty: 3, material: 'TAPIS', criteria: ['Partir groupé', 'Poser les mains près des oreilles', 'Pousser fort'], success: ['Se relever sans aide', 'Rouler dans l\'axe'], views: ['FACE', 'PROFIL'], steps: 2, errors: ['TETE RELEVEE MANQUE D ENROULEMENT'] }
+                ],
+                'SOL-SE DEPLACER': [
+                    { name: 'SE DEPLACER EN ARAIGNEE', difficulty: 1, material: 'TAPIS', criteria: ['Bras et jambes tendus'], success: ['Coordination fluide'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN CHAT', difficulty: 1, material: 'TAPIS', criteria: ['À quatre pattes'], success: ['Mouvement contrôlé'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN CHENILLE', difficulty: 1, material: 'TAPIS', criteria: ['Alterner mains et pieds'], success: ['Progression continue'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN ELEPHANT', difficulty: 2, material: 'TAPIS', criteria: ['Jambes tendues'], success: ['Équilibre stable'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN GIRAFE', difficulty: 2, material: 'TAPIS', criteria: ['Bras levés'], success: ['Posture haute'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN KANGOUROU', difficulty: 1, material: 'TAPIS', criteria: ['Pieds joints'], success: ['Bonds réguliers'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN LAPIN', difficulty: 1, material: 'TAPIS', criteria: ['Mains puis pieds'], success: ['Saut coordonné'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SE DEPLACER EN PHOQUE', difficulty: 2, material: 'TAPIS', criteria: ['Appui sur les bras'], success: ['Traîner les jambes'], views: ['FACE', 'PROFIL'] }
+                ],
+                'SOL-SAUTER': [
+                    { name: 'SAUT EXTENSION', difficulty: 1, material: 'TAPIS', criteria: ['Corps gainé', 'Bras levés'], success: ['Extension complète'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SAUT EXTENSION EN CONTRE BAS', difficulty: 2, material: 'TAPIS ET BANC', criteria: ['Sauter loin', 'Réception équilibrée'], success: ['Atterrissage contrôlé'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SAUT GROUPE', difficulty: 1, material: 'TAPIS', criteria: ['Genoux à la poitrine'], success: ['Groupé en l\'air'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SAUT DE CHAT', difficulty: 2, material: 'TAPIS', criteria: ['Une jambe devant'], success: ['Dissociation des jambes'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SAUT DE LAPIN EN CONTRE HAUT', difficulty: 2, material: 'TAPIS ET BANC', criteria: ['Mains sur le banc'], success: ['Pieds rejoignent les mains'], views: ['FACE', 'PROFIL'] },
+                    { name: 'SAUT DEMI TOUR', difficulty: 2, material: 'TAPIS', criteria: ['Rotation de 180°'], success: ['Réception stable'], views: ['FACE', 'PROFIL'], steps: 1 },
+                    { name: 'SAUTS PIEDS JOINTS DANS CERCEAUX', difficulty: 1, material: 'CERCEAUX', criteria: ['Pieds joints'], success: ['Précision des sauts'], views: ['FACE', 'PROFIL'] }
+                ],
+                'SOL-SE MAINTENIR': [
+                    { name: 'ATTITUDE EQUILIBRE 1 PIED', difficulty: 2, material: 'TAPIS', criteria: ['Tenir 3 secondes'], success: ['Stabilité complète'], views: ['FACE', 'PROFIL'] },
+                    { name: 'CUILLIERE', difficulty: 2, material: 'TAPIS', criteria: ['Jambes tendues'], success: ['Maintien 3 secondes'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EQUILIBRE FESSIER', difficulty: 2, material: 'TAPIS', criteria: ['Équilibre sur les fesses'], success: ['Jambes et bras levés'], views: ['FACE', 'PROFIL'], steps: 3 },
+                    { name: 'PLANCHE', difficulty: 3, material: 'TAPIS', criteria: ['Corps aligné'], success: ['Tenir 5 secondes'], views: ['PROFIL'], steps: 1 },
+                    { name: 'PONT', difficulty: 3, material: 'TAPIS', criteria: ['Mains et pieds au sol'], success: ['Dos cambré'], views: ['FACE', 'PROFIL'] }
+                ],
+                'SOL-SE RENVERSER': [
+                    { name: 'ATR 1 JAMBE', difficulty: 4, material: 'TAPIS', criteria: ['Monter une jambe'], success: ['Équilibre vertical'], views: ['FACE'], errors: ['LE CORPS EST EN "BANANE"'] },
+                    { name: 'ROUE', difficulty: 3, material: 'TAPIS', criteria: ['Main-main-pied-pied'], success: ['Passage latéral'], views: ['FACE', 'PROFIL'], steps: 2 }
+                ],
+                'POUTRE-SE DEPLACER': [
+                    { name: 'A 4 PATTES', difficulty: 1, material: 'POUTRE BASSE', criteria: ['Quatre appuis'], success: ['Avancer régulièrement'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN ARAIGNEE', difficulty: 2, material: 'POUTRE BASSE', criteria: ['Bras et jambes tendus'], success: ['Déplacement contrôlé'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN CHENILLE', difficulty: 2, material: 'POUTRE BASSE', criteria: ['Alterner mains-pieds'], success: ['Progression fluide'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN GIRAFE', difficulty: 2, material: 'POUTRE BASSE', criteria: ['Bras levés'], success: ['Équilibre maintenu'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN KANGOUROU', difficulty: 3, material: 'POUTRE BASSE', criteria: ['Pieds joints'], success: ['Sauts contrôlés'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN LAPIN', difficulty: 2, material: 'POUTRE BASSE', criteria: ['Mains puis pieds'], success: ['Coordination précise'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN MARCHANT', difficulty: 1, material: 'POUTRE', criteria: ['Regard fixe'], success: ['Pas réguliers'], views: ['FACE', 'PROFIL'] },
+                    { name: 'EN RECULANT', difficulty: 2, material: 'POUTRE', criteria: ['Marcher en arrière'], success: ['Équilibre stable'], views: ['FACE', 'PROFIL'] }
+                ],
+                'POUTRE-SAUTER': [
+                    { name: 'SAUT AU DESSUS DE LA POUTRE', difficulty: 2, material: 'POUTRE BASSE', criteria: ['Impulsion des deux pieds'], success: ['Franchir la poutre'], views: ['PROFIL'] }
+                ],
+                'POUTRE-SE MAINTENIR': [],
+                'BARRES-SE MAINTENIR': [
+                    { name: 'APPUI SIMPLE', difficulty: 2, material: 'BARRE FIXE', criteria: ['Bras tendus'], success: ['Maintien stable'], views: ['FACE'] },
+                    { name: 'SUSPENSION SIMPLE', difficulty: 1, material: 'BARRE FIXE', criteria: ['Prise ferme'], success: ['Tenir 5 secondes'], views: ['FACE'] }
+                ]
+            };
+
+            const getImg = (a, ac, el, v, t, d) => {
+                let p = `${a} - ${ac}`;
+                if (el) p += ` - ${el}`;
+                if (v) p += ` - ${v}`;
+                if (t) p += ` - ${t}`;
+                if (d) p += ` - ${d}`;
+                return `${IMAGES_PATH}/${p.replace(/ /g, '%20')}.webp`;
+            };
+
+            const Stars = ({ n }) => React.createElement('div', { className: 'flex gap-1' },
+                [1,2,3,4].map(i => React.createElement('span', { key: i, className: `text-2xl ${i <= n ? 'text-yellow-400' : 'text-gray-300'}` }, '⭐'))
+            );
+
+            const Nav = ({ onHome, onBack }) => React.createElement('div', { className: 'flex items-center gap-4 mb-8' },
+                React.createElement('button', { 
+                    onClick: onHome, 
+                    className: 'flex items-center gap-2 text-indigo-700 hover:text-indigo-900' 
+                },
+                    React.createElement(Icon, { type: 'home' }),
+                    React.createElement('span', { className: 'hidden md:inline' }, 'ACCUEIL')
+                ),
+                React.createElement('span', { className: 'text-gray-400' }, '|'),
+                React.createElement('button', { 
+                    onClick: onBack, 
+                    className: 'flex items-center gap-2 text-indigo-700 hover:text-indigo-900' 
+                },
+                    React.createElement(Icon, { type: 'back' }),
+                    React.createElement('span', { className: 'hidden md:inline' }, 'RETOUR')
+                )
+            );
+
+            // Vue Accueil
+            if (view === 'home') {
+                const allElems = [];
+                Object.keys(data).forEach(k => {
+                    const [a, ac] = k.split('-');
+                    data[k].forEach(e => allElems.push({...e, agre: a, action: ac}));
+                });
+
+                const filtered = allElems.filter(e => {
+                    const match = !search || e.name.toLowerCase().includes(search.toLowerCase()) || 
+                                  e.action.toLowerCase().includes(search.toLowerCase()) ||
+                                  e.agre.toLowerCase().includes(search.toLowerCase());
+                    const matchDiff = filters.length === 0 || filters.includes(e.difficulty);
+                    return match && matchDiff;
+                });
+
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8' },
+                    React.createElement('div', { className: 'max-w-6xl mx-auto' },
+                        React.createElement('h1', { className: 'text-4xl md:text-5xl font-bold text-center text-indigo-900 mb-4' }, 'ÉLÉMENTS GYMNASTIQUE'),
+                        React.createElement('p', { className: 'text-xl text-center text-indigo-700 mb-8' }, '1er degré'),
+                        
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-8' },
+                            React.createElement('div', { className: 'flex flex-col md:flex-row gap-4' },
+                                React.createElement('div', { className: 'flex-1 relative' },
+                                    React.createElement('div', { className: 'absolute left-3 top-1/2 transform -translate-y-1/2' },
+                                        React.createElement(Icon, { type: 'search', size: 20 })
+                                    ),
+                                    React.createElement('input', {
+                                        type: 'text',
+                                        placeholder: 'Rechercher...',
+                                        value: search,
+                                        onChange: e => setSearch(e.target.value),
+                                        className: 'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                                    })
+                                ),
+                                React.createElement('button', {
+                                    onClick: () => setShowFilters(!showFilters),
+                                    className: 'flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700'
+                                },
+                                    React.createElement(Icon, { type: 'filter', size: 20 }),
+                                    React.createElement('span', null, `Filtres ${filters.length > 0 ? `(${filters.length})` : ''}`)
+                                )
+                            ),
+                            
+                            showFilters && React.createElement('div', { className: 'mt-4 pt-4 border-t' },
+                                React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+                                    React.createElement('h3', { className: 'font-semibold' }, 'Niveau de difficulté'),
+                                    (filters.length > 0 || search) && React.createElement('button', {
+                                        onClick: () => { setFilters([]); setSearch(''); },
+                                        className: 'flex items-center gap-1 text-sm text-indigo-600'
+                                    },
+                                        React.createElement(Icon, { type: 'x', size: 16 }),
+                                        React.createElement('span', null, 'Réinitialiser')
+                                    )
+                                ),
+                                React.createElement('div', { className: 'flex flex-wrap gap-3' },
+                                    [1,2,3,4].map(lv => React.createElement('button', {
+                                        key: lv,
+                                        onClick: () => setFilters(p => p.includes(lv) ? p.filter(l => l !== lv) : [...p, lv]),
+                                        className: `px-4 py-2 rounded-lg border-2 ${filters.includes(lv) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-gray-300'}`
+                                    },
+                                        React.createElement('span', null, `Niveau ${lv} ${'⭐'.repeat(lv)}`)
+                                    ))
+                                )
+                            ),
+
+                            (search || filters.length > 0) && React.createElement('div', { className: 'mt-4 pt-4 border-t' },
+                                React.createElement('p', { className: 'text-sm text-gray-600 mb-3' }, `${filtered.length} élément${filtered.length > 1 ? 's' : ''} trouvé${filtered.length > 1 ? 's' : ''}`),
+                                React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto' },
+                                    filtered.map((e, i) => React.createElement('button', {
+                                        key: i,
+                                        onClick: () => { setAgre(e.agre); setAction(e.action); setElement(e); setView('detail'); },
+                                        className: 'bg-gray-50 hover:bg-indigo-50 rounded-lg p-3 text-left'
+                                    },
+                                        React.createElement('div', { className: 'flex justify-between mb-2' },
+                                            React.createElement('div', { className: 'text-xs font-medium text-indigo-600' }, `${e.agre} - ${e.action}`),
+                                            React.createElement('div', { className: 'flex gap-0.5' },
+                                                [1,2,3,4].map(j => React.createElement('span', { key: j, className: `text-xs ${j <= e.difficulty ? 'text-yellow-400' : 'text-gray-300'}` }, '⭐'))
+                                            )
+                                        ),
+                                        React.createElement('div', { className: 'font-semibold text-sm' }, e.name)
+                                    ))
+                                )
+                            )
+                        ),
+
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-6 md:p-8' },
+                            React.createElement('h2', { className: 'text-2xl font-semibold text-center mb-6' }, 'Sélectionnez un agrès'),
+                            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' },
+                                agres.map(ag => React.createElement('button', {
+                                    key: ag.id,
+                                    onClick: () => { setAgre(ag.id); setView('actions'); },
+                                    className: `${ag.color} hover:opacity-90 text-white rounded-xl p-8 transform hover:scale-105 shadow-lg`
+                                },
+                                    React.createElement('div', { className: 'text-3xl font-bold' }, ag.name)
+                                ))
+                            )
+                        )
+                    )
+                );
+            }
+
+            // Vue Actions
+            if (view === 'actions') {
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8' },
+                    React.createElement('div', { className: 'max-w-6xl mx-auto' },
+                        React.createElement(Nav, { onHome: () => setView('home'), onBack: () => setView('home') }),
+                        React.createElement('h1', { className: 'text-3xl md:text-4xl font-bold text-indigo-900 mb-4' }, agre),
+                        React.createElement('p', { className: 'text-lg md:text-xl text-indigo-700 mb-8' }, 'Sélectionnez une action'),
+                        React.createElement('div', { className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6' },
+                            actions[agre]?.map(ac => React.createElement('button', {
+                                key: ac,
+                                onClick: () => { setAction(ac); setView('elements'); },
+                                className: 'bg-white hover:bg-indigo-50 rounded-xl p-4 md:p-6 shadow-lg transform hover:scale-105'
+                            },
+                                React.createElement('div', { className: 'aspect-square mb-4 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center' },
+                                    React.createElement(ImageWithFallback, { src: getImg(agre, ac), alt: ac, className: 'w-full h-full object-cover' })
+                                ),
+                                React.createElement('div', { className: 'text-sm md:text-lg font-semibold text-center' }, ac)
+                            ))
+                        )
+                    )
+                );
+            }
+
+            // Vue Éléments
+            if (view === 'elements') {
+                const elems = data[`${agre}-${action}`] || [];
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8' },
+                    React.createElement('div', { className: 'max-w-6xl mx-auto' },
+                        React.createElement(Nav, { onHome: () => setView('home'), onBack: () => setView('actions') }),
+                        React.createElement('h1', { className: 'text-3xl md:text-4xl font-bold text-indigo-900 mb-4' }, `${agre} - ${action}`),
+                        React.createElement('p', { className: 'text-lg md:text-xl text-indigo-700 mb-8' }, 'Sélectionnez un élément'),
+                        React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6' },
+                            elems.map((el, i) => React.createElement('button', {
+                                key: i,
+                                onClick: () => { setElement(el); setShowSteps(false); setView('detail'); },
+                                className: 'bg-white hover:bg-indigo-50 rounded-xl p-4 md:p-6 shadow-lg transform hover:scale-105 text-left'
+                            },
+                                React.createElement('div', { className: 'aspect-video mb-4 bg-gray-200 rounded-lg overflow-hidden' },
+                                    React.createElement(ImageWithFallback, { src: getImg(agre, action, el.name, el.views[0]), alt: el.name, className: 'w-full h-full object-cover' })
+                                ),
+                                React.createElement('div', { className: 'text-base md:text-lg font-semibold mb-2' }, el.name),
+                                React.createElement(Stars, { n: el.difficulty })
+                            ))
+                        )
+                    )
+                );
+            }
+
+            // Vue Détail
+            if (view === 'detail' && element) {
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8' },
+                    React.createElement('div', { className: 'max-w-6xl mx-auto' },
+                        React.createElement(Nav, { onHome: () => setView('home'), onBack: () => setView('elements') }),
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-6 md:p-8' },
+                            React.createElement('h1', { className: 'text-3xl md:text-4xl font-bold text-indigo-900 mb-6' }, element.name),
+                            
+                            React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8' },
+                                element.views.map(v => React.createElement('div', { key: v, className: 'bg-gray-100 rounded-xl p-4' },
+                                    React.createElement('h3', { className: 'text-lg font-semibold mb-3' }, `VIDEO ${v}`),
+                                    React.createElement('div', { className: 'aspect-video bg-gray-200 rounded-lg overflow-hidden' },
+                                        React.createElement(ImageWithFallback, { src: getImg(agre, action, element.name, v), alt: v, className: 'w-full h-full object-cover' })
+                                    )
+                                ))
+                            ),
+
+                            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8' },
+                                React.createElement('div', { className: 'bg-yellow-50 rounded-xl p-4' },
+                                    React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+                                        React.createElement(Icon, { type: 'info', size: 20 }),
+                                        React.createElement('h3', { className: 'font-semibold' }, 'DIFFICULTÉ')
+                                    ),
+                                    React.createElement(Stars, { n: element.difficulty })
+                                ),
+                                React.createElement('div', { className: 'bg-blue-50 rounded-xl p-4' },
+                                    React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+                                        React.createElement(Icon, { type: 'info', size: 20 }),
+                                        React.createElement('h3', { className: 'font-semibold' }, 'MATÉRIEL')
+                                    ),
+                                    React.createElement('p', null, element.material)
+                                )
+                            ),
+
+                            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8' },
+                                React.createElement('div', { className: 'bg-orange-50 rounded-xl p-4' },
+                                    React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+                                        React.createElement(Icon, { type: 'alert', size: 20 }),
+                                        React.createElement('h3', { className: 'font-semibold' }, 'CRITÈRES DE RÉALISATION')
+                                    ),
+                                    React.createElement('ul', { className: 'space-y-2' },
+                                        element.criteria.map((c, i) => React.createElement('li', { key: i, className: 'flex gap-2' },
+                                            React.createElement('span', { className: 'text-orange-600' }, '•'),
+                                            React.createElement('span', null, c)
+                                        ))
+                                    )
+                                ),
+                                React.createElement('div', { className: 'bg-green-50 rounded-xl p-4' },
+                                    React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+                                        React.createElement(Icon, { type: 'check', size: 20 }),
+                                        React.createElement('h3', { className: 'font-semibold' }, 'CRITÈRES DE RÉUSSITE')
+                                    ),
+                                    React.createElement('ul', { className: 'space-y-2' },
+                                        element.success.map((s, i) => React.createElement('li', { key: i, className: 'flex gap-2' },
+                                            React.createElement('span', { className: 'text-green-600' }, '✓'),
+                                            React.createElement('span', null, s)
+                                        ))
+                                    )
+                                )
+                            ),
+
+                            element.errors && React.createElement('div', { className: 'bg-red-50 rounded-xl p-4 mb-8' },
+                                React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+                                    React.createElement(Icon, { type: 'alert', size: 20 }),
+                                    React.createElement('h3', { className: 'font-semibold' }, 'ERREURS COURANTES')
+                                ),
+                                React.createElement('div', { className: 'space-y-4' },
+                                    element.errors.map((err, i) => React.createElement('div', { key: i, className: 'bg-white rounded-lg p-3' },
+                                        React.createElement('p', { className: 'mb-2' }, err),
+                                        React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                            element.views.map(v => React.createElement('div', { key: v, className: 'aspect-video bg-gray-200 rounded overflow-hidden' },
+                                                React.createElement(ImageWithFallback, { src: getImg(agre, action, element.name, v, 'ERREUR', err), alt: err, className: 'w-full h-full object-cover' })
+                                            ))
+                                        )
+                                    ))
+                                )
+                            ),
+
+                            element.steps && React.createElement('div', { className: 'bg-purple-50 rounded-xl p-4' },
+                                React.createElement('button', {
+                                    onClick: () => setShowSteps(!showSteps),
+                                    className: 'flex items-center justify-between w-full mb-4'
+                                },
+                                    React.createElement('div', { className: 'flex items-center gap-2' },
+                                        React.createElement(Icon, { type: 'play', size: 20 }),
+                                        React.createElement('h3', { className: 'font-semibold' }, 'ÉTAPES DE PROGRESSION')
+                                    ),
+                                    React.createElement('span', { className: 'text-purple-600' }, showSteps ? '▼' : '▶')
+                                ),
+                                showSteps && React.createElement('div', { className: 'space-y-6' },
+                                    Array.from({ length: element.steps }, (_, i) => i + 1).map(n => React.createElement('div', { key: n, className: 'bg-white rounded-lg p-4' },
+                                        React.createElement('h4', { className: 'font-semibold mb-3' }, `Étape ${n}`),
+                                        React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                                            element.views.map(v => React.createElement('div', { key: v, className: 'aspect-video bg-gray-200 rounded overflow-hidden' },
+                                                React.createElement(ImageWithFallback, { src: getImg(agre, action, element.name, v, 'ETAPE', n), alt: `Étape ${n}`, className: 'w-full h-full object-cover' })
+                                            ))
+                                        )
+                                    ))
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+
+            return null;
+        };
+
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>
